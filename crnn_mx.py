@@ -13,41 +13,41 @@ class VGG(nn.Module):
         self.features = nn.Sequential(  # conv layer
             nn.Conv2d(in_channels=in_channels, out_channels=64, kernel_size=(3, 3), padding=(1, 1)),
             nn.ReLU(),
-            nn.BatchNorm2d(64),
+            nn.BatchNorm2d(64, momentum=0.9),
             nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2)),
 
             # second conv layer
             nn.Conv2d(in_channels=64, out_channels=128, kernel_size=(3, 3), padding=(1, 1)),
             nn.ReLU(),
-            nn.BatchNorm2d(128),
+            nn.BatchNorm2d(128, momentum=0.9),
             nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2)),
 
             # third conv layer
             nn.Conv2d(in_channels=128, out_channels=256, kernel_size=(3, 3), padding=(1, 1)),
             nn.ReLU(),
-            nn.BatchNorm2d(256),
+            nn.BatchNorm2d(256, momentum=0.9),
 
             # fourth conv layer
             nn.Conv2d(in_channels=256, out_channels=256, kernel_size=(3, 3), padding=(1, 1)),
             nn.ReLU(),
-            nn.BatchNorm2d(256),
+            nn.BatchNorm2d(256, momentum=0.9),
             nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 1), padding=(0, 1)),
 
             # fifth conv layer
             nn.Conv2d(in_channels=256, out_channels=512, kernel_size=(3, 3), padding=(1, 1)),
             nn.ReLU(),
-            nn.BatchNorm2d(512),
+            nn.BatchNorm2d(512, momentum=0.9),
 
             # sixth conv layer
             nn.Conv2d(in_channels=512, out_channels=512, kernel_size=(3, 3), padding=(1, 1)),
             nn.ReLU(),
-            nn.BatchNorm2d(512),
+            nn.BatchNorm2d(512, momentum=0.9),
             nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 1), padding=(0, 1)),
 
             # seren conv layer
             nn.Conv2d(in_channels=512, out_channels=512, kernel_size=(2, 2)),
             nn.ReLU(),
-            nn.BatchNorm2d(512)
+            nn.BatchNorm2d(512, momentum=0.9)
         )
 
     def forward(self, x):
@@ -75,12 +75,12 @@ class BasicBlockV2(nn.Module):
     def __init__(self, in_channels, out_channels, stride, downsample=False):
         super(BasicBlockV2, self).__init__()
 
-        self.bn1 = nn.BatchNorm2d(in_channels)
+        self.bn1 = nn.BatchNorm2d(in_channels, momentum=0.9)
         self.relu1 = nn.ReLU()
         self.conv = nn.Sequential(
             nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=3, stride=stride, padding=1,
                       bias=False),
-            nn.BatchNorm2d(out_channels),
+            nn.BatchNorm2d(out_channels, momentum=0.9),
             nn.ReLU(),
             nn.Conv2d(in_channels=out_channels, out_channels=out_channels, kernel_size=3, stride=1, padding=1,
                       bias=False)
@@ -107,10 +107,10 @@ class ResNet(nn.Module):
         super(ResNet, self).__init__()
         self.features = nn.Sequential(
             nn.Conv2d(in_channels=in_channels, out_channels=64, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(64),
+            nn.BatchNorm2d(64, momentum=0.9),
             nn.ReLU(),
             nn.Conv2d(in_channels=64, out_channels=64, kernel_size=2, stride=2, bias=False),
-            nn.BatchNorm2d(64),
+            nn.BatchNorm2d(64, momentum=0.9),
             nn.ReLU(),
             BasicBlockV2(in_channels=64, out_channels=64, stride=1, downsample=True),
             BasicBlockV2(in_channels=64, out_channels=128, stride=1, downsample=True),
@@ -125,10 +125,10 @@ class ResNet(nn.Module):
             BasicBlockV2(in_channels=256, out_channels=512, stride=1, downsample=True),
 
             nn.Conv2d(in_channels=512, out_channels=1024, kernel_size=3, padding=0, bias=False),
-            nn.BatchNorm2d(1024),
+            nn.BatchNorm2d(1024, momentum=0.9),
             nn.ReLU(),
             nn.Conv2d(in_channels=1024, out_channels=2048, kernel_size=2, padding=(0, 1), bias=False),
-            nn.BatchNorm2d(2048),
+            nn.BatchNorm2d(2048, momentum=0.9),
             nn.ReLU()
         )
 
@@ -139,7 +139,7 @@ class ResNet(nn.Module):
 class _Transition(nn.Sequential):
     def __init__(self, in_channels, out_channels, pool_stride, pool_pad, dropout):
         super(_Transition, self).__init__()
-        self.add_module('norm', nn.BatchNorm2d(in_channels))
+        self.add_module('norm', nn.BatchNorm2d(in_channels, momentum=0.9))
         self.add_module('relu', nn.ReLU(inplace=True))
         self.add_module('conv', nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, bias=False))
         if dropout:
@@ -152,7 +152,7 @@ class DenseNet(nn.Module):
         super(DenseNet, self).__init__()
         self.features = nn.Sequential(
             nn.Conv2d(in_channels=in_channels, out_channels=64, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(64),
+            nn.BatchNorm2d(64, momentum=0.9),
             nn.ReLU(),
             nn.Conv2d(in_channels=64, out_channels=64, kernel_size=2, stride=2, bias=False),
             _DenseBlock(num_input_features=64, num_layers=8, bn_size=4, growth_rate=8, drop_rate=0),
@@ -163,13 +163,13 @@ class DenseNet(nn.Module):
 
             _DenseBlock(num_input_features=192, num_layers=8, bn_size=4, growth_rate=8, drop_rate=0),
 
-            nn.BatchNorm2d(256),
+            nn.BatchNorm2d(256, momentum=0.9),
             nn.ReLU(),
             nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, padding=0, bias=False),
-            nn.BatchNorm2d(512),
+            nn.BatchNorm2d(512, momentum=0.9),
             nn.ReLU(),
             nn.Conv2d(in_channels=512, out_channels=1024, kernel_size=2, padding=(0, 1), bias=False),
-            nn.BatchNorm2d(1024),
+            nn.BatchNorm2d(1024, momentum=0.9),
             nn.ReLU()
         )
 
@@ -224,13 +224,41 @@ class CRNN(nn.Module):
         x = self.decoder(x)
         return x
 
+def find_lr():
+    import os
+    # from warpctc_pytorch import CTCLoss
+    import torch.optim as optim
+    from dataset import ImageDataset
+    import config
+    from torch.utils.data import DataLoader
+    import torchvision.transforms as transforms
+    from lr_finder import LRFinder
+    import utils
+    converter = utils.strLabelConverter(config.alphabet)
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(3)
+    device = torch.device('cuda:0')
+    train_dataset = ImageDataset(data_txt=config.trainfile, data_shape=(config.img_h, config.img_w),
+                                 img_type=config.img_type, img_channel=config.img_channel, phase='train',
+                                 transform=transforms.ToTensor())
+
+    train_data_loader = DataLoader(train_dataset, 24, shuffle=True, num_workers=0)
+
+    net = CRNN(3, 10, 512)
+    criterion = CTCLoss()
+    optimizer = optim.Adam(net.parameters(), lr=1e-7)
+    lr_finder = LRFinder(net, optimizer, criterion, converter,device=device)
+    lr_finder.range_test(train_data_loader, end_lr=1000, num_iter=1000)
+    lr_finder.plot()
 
 if __name__ == '__main__':
-    device = torch.device('cpu')
-    a = torch.zeros((2, 3, 32, 320)).to(device)
-    net = CRNN(3, 10, 512)
-    # net = VGG(3)
-    # net.hybridize()
-    net.to(device)
-    b = net(a)
-    print(b.size())
+    # device = torch.device('cpu')
+    # a = torch.zeros((2, 3, 32, 320)).to(device)
+    # net = CRNN(3, 10, 256)
+    # net.eval()
+    # # net = VGG(3)
+    # # net.hybridize()
+    # net.to(device)
+    # b = net(a)
+    # print(b.size())
+    # print(net)
+    find_lr()

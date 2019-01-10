@@ -97,5 +97,6 @@ if __name__ == '__main__':
     import torch
     input = torch.zeros(64,3,32,320)
     net = CRNN(32,3,2,256)
+    net.apply()
     y = net(input)
     print(y.shape)

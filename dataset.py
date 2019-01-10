@@ -6,7 +6,6 @@ from PIL import Image
 import numpy as np
 import six
 import torch
-import torchvision.transforms as transforms
 from PIL import Image
 from torch.utils.data import Dataset
 from torch.utils.data import sampler
@@ -60,6 +59,8 @@ class ImageDataset(Dataset):
             img = self.pre_processing(img_path)
         else:
             img = self.pre_processing_pil(img_path)
+        # img = transforms.ColorJitter(brightness=0.5)(img)
+        # img = np.array(img)
         if self.transform is not None:
             img = self.transform(img)
         if self.target_transform is not None:
@@ -76,6 +77,7 @@ class ImageDataset(Dataset):
         :param img_path: 图片地址
         :return:
         """
+        from opencv_transforms import opencv_transforms as transforms
         data_augment = False
         if self.phase == 'train' and np.random.rand() > 0.5:
             data_augment = True
@@ -86,6 +88,7 @@ class ImageDataset(Dataset):
             img_h = self.img_h
             img_w = self.img_w
         img = cv_imread(img_path, 1 if self.img_channel == 3 else 0)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         h, w = img.shape[:2]
         ratio_h = float(img_h) / h
         new_w = int(w * ratio_h)
@@ -97,9 +100,7 @@ class ImageDataset(Dataset):
             img = cv2.resize(img, (img_w, img_h))
         if data_augment:
             # random crop
-            starty = np.random.randint(0, img_h - self.img_h + 1)
-            startx = np.random.randint(0, img_w - self.img_w + 1)
-            img = img[starty:, startx:]
+            img = transforms.RandomCrop((self.img_h, self.img_w))(img)
         return img
 
     def pre_processing_pil(self, img_path):
@@ -109,6 +110,7 @@ class ImageDataset(Dataset):
         :param img_path: 图片地址
         :return:
         """
+        from torchvision import transforms
         data_augment = False
         if self.phase == 'train' and np.random.rand() > 0.5:
             data_augment = True

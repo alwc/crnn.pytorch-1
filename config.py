@@ -5,7 +5,7 @@ import keys
 
 trainfile = '/data1/zj/data/crnn/txt/train2.txt'
 testfile = '/data/zhy/crnn/Chinese_character/test2.txt'
-output_dir = 'output/resnet_pytorch_seed'
+output_dir = 'output/resnet_lstm_512_pytorch0.4.1_seed_warp_ctc_mx_init_rgb_opencv_data_aug'
 
 gpu_id = 2
 workers = 6
@@ -18,8 +18,8 @@ eval_batch_size = 64
 img_h = 32
 img_w = 320
 img_channel = 3
-img_type = 'PIL'
-nh = 256
+img_type = 'cv'
+nh = 512
 
 lr = 0.001
 end_lr = 1e-7
