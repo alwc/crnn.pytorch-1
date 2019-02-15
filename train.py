@@ -6,15 +6,13 @@ from __future__ import print_function
 import os
 import copy
 import time
+from tqdm import tqdm
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
 import torch.utils.data
 from torch import nn
-if torch.__version__.startswith('1'):
-    from torch.nn import CTCLoss
-else:
-    from warpctc_pytorch import CTCLoss
+from torch.nn import CTCLoss
 import utils
 from crnn_mx import CRNN
 import config
@@ -67,7 +65,7 @@ def save_checkpoint(checkpoint_path, model, optimizer, epoch, logger):
 def load_checkpoint(checkpoint_path, model, optimizer, logger):
     state = torch.load(checkpoint_path)
     model.load_state_dict(state['state_dict'])
-    # optimizer.load_state_dict(state['optimizer'])
+    optimizer.load_state_dict(state['optimizer'])
     start_epoch = state['epoch']
     logger.info('model loaded from %s' % checkpoint_path)
     return start_epoch
@@ -88,13 +86,17 @@ def accuracy(preds, labels, preds_lengths, converter):
 def evaluate_accuracy(model, dataloader, device, converter):
     model.eval()
     metric = 0
+    pbar = tqdm(total=len(dataloader),desc='test crnn')
     for i, (images, label) in enumerate(dataloader):
         cur_batch_size = images.size(0)
-        images = images.to(device)
+        with torch.no_grad():
+            images = images.to(device)
         preds = model(images)
         # print(len(images))
         preds_lengths = torch.Tensor([preds.size(0)] * cur_batch_size).int()
         metric += accuracy(preds.cpu(), label, preds_lengths.cpu(), converter)
+        pbar.update(1)
+    pbar.close()
     return metric
 
 
@@ -146,17 +148,21 @@ def train():
                                 transform=transforms.ToTensor())
     test_data_loader = DataLoader(test_dataset, config.eval_batch_size, shuffle=True, num_workers=config.workers)
 
+    logger.info('load data finish')
     converter = utils.strLabelConverter(config.alphabet)
     criterion = CTCLoss()
 
     model = CRNN(config.img_channel, len(config.alphabet), config.nh)
     model.apply(weights_init)
     optimizer = optim.Adam(model.parameters(), lr=config.lr)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, config.lr_decay_step, gamma=config.lr_decay)
+
 
     start_epoch = config.start_epoch
     if config.checkpoint != '' and not config.restart_training:
         start_epoch = load_checkpoint(config.checkpoint, model, optimizer, logger)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, config.lr_decay_step, gamma=config.lr_decay,last_epoch=start_epoch)
+    else:
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, config.lr_decay_step, gamma=config.lr_decay)
     model = model.to(device)
     # print(model)
     writer = SummaryWriter(config.output_dir)
@@ -166,7 +172,7 @@ def train():
     best_acc = 0
     best_model = None
     try:
-        for epoch in range(start_epoch, config.epochs):
+        for epoch in range(start_epoch + 1, config.epochs):
             model.train()
             if float(scheduler.get_lr()[0]) > config.end_lr:
                 scheduler.step()
@@ -184,9 +190,8 @@ def train():
                 images = images.to(device)
 
                 preds = model(images)
+                preds = preds.log_softmax(2) # for torch 1.0
                 preds_lengths = torch.Tensor([preds.size(0)] * cur_batch_size).int()
-                # preds = preds.log_softmax(2).to(torch.float64) # for torch 1.0
-                # loss,_ = torch._cudnn_ctc_loss(preds, targets.int(), preds_lengths, targets_lengths,0,True)  #
                 loss = criterion(preds, targets, preds_lengths, targets_lengths)  # text,preds_size must be cpu
                 # backward
                 optimizer.zero_grad()
@@ -226,7 +231,7 @@ def train():
             val_acc = evaluate_accuracy(model, test_data_loader, device, converter) / len(test_dataset)
             logger.info('[{}/{}], val_acc: {:.6f}'.format(epoch, config.epochs, val_acc))
             writer.add_scalar(tag='val_acc', scalar_value=val_acc, global_step=cur_step)
-            save_checkpoint('{}/{}_{}.pth'.format(config.output_dir, epoch, val_acc), model, optimizer, epoch + 1,
+            save_checkpoint('{}/{}_{}.pth'.format(config.output_dir, epoch, val_acc), model, optimizer, epoch,
                             logger)
             if val_acc > best_acc:
                 best_acc = val_acc

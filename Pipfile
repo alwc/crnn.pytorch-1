@@ -12,6 +12,7 @@ matplotlib = "*"
 torch = {file = "http://download.pytorch.org/whl/cu80/torch-0.4.0-cp35-cp35m-linux_x86_64.whl"}
 torchvision = "*"
 colorlog = "*"
+pqi = "*"
 
 [requires]
 python_version = "3.5"

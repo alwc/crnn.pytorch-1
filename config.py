@@ -5,9 +5,9 @@ import keys
 
 trainfile = '/data1/zj/data/crnn/txt/train2.txt'
 testfile = '/data/zhy/crnn/Chinese_character/test2.txt'
-output_dir = 'output/resnet_lstm_512_pytorch0.4.1_seed_warp_ctc_mx_init_rgb_opencv_data_aug'
+output_dir = 'output/resnet_lstm_512_pytorch1.01_seed_warp_ctc_mx_init_rgb_opencv_data_aug'
 
-gpu_id = 2
+gpu_id = 3
 workers = 6
 start_epoch = 0
 epochs = 100

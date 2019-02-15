@@ -207,7 +207,9 @@ class Decoder(nn.Module):
 
     def forward(self, x):
         x = self.rnn(x)
+        # print(x.shape)
         x = self.fc(x)
+        # print(x.shape)
         return x
 
 
@@ -219,46 +221,18 @@ class CRNN(nn.Module):
 
     def forward(self, x):
         x = self.encoder(x)
+        # print(x.shape)
         x = x.squeeze(dim=2)
         x = x.permute(2, 0, 1)  # [w, b, c]
         x = self.decoder(x)
         return x
 
-def find_lr():
-    import os
-    # from warpctc_pytorch import CTCLoss
-    import torch.optim as optim
-    from dataset import ImageDataset
-    import config
-    from torch.utils.data import DataLoader
-    import torchvision.transforms as transforms
-    from lr_finder import LRFinder
-    import utils
-    converter = utils.strLabelConverter(config.alphabet)
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(3)
-    device = torch.device('cuda:0')
-    train_dataset = ImageDataset(data_txt=config.trainfile, data_shape=(config.img_h, config.img_w),
-                                 img_type=config.img_type, img_channel=config.img_channel, phase='train',
-                                 transform=transforms.ToTensor())
-
-    train_data_loader = DataLoader(train_dataset, 24, shuffle=True, num_workers=0)
-
-    net = CRNN(3, 10, 512)
-    criterion = CTCLoss()
-    optimizer = optim.Adam(net.parameters(), lr=1e-7)
-    lr_finder = LRFinder(net, optimizer, criterion, converter,device=device)
-    lr_finder.range_test(train_data_loader, end_lr=1000, num_iter=1000)
-    lr_finder.plot()
 
 if __name__ == '__main__':
-    # device = torch.device('cpu')
-    # a = torch.zeros((2, 3, 32, 320)).to(device)
-    # net = CRNN(3, 10, 256)
-    # net.eval()
-    # # net = VGG(3)
-    # # net.hybridize()
-    # net.to(device)
-    # b = net(a)
-    # print(b.size())
-    # print(net)
-    find_lr()
+    device = torch.device('cpu')
+    a = torch.zeros((2, 3, 32, 320)).to(device)
+    net = CRNN(3, 10, 256)
+    net.eval()
+    net.to(device)
+    b = net(a)
+    print(b.size())
