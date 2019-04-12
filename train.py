@@ -4,6 +4,10 @@
 
 from __future__ import print_function
 import os
+import config
+
+os.environ["CUDA_VISIBLE_DEVICES"] = config.gpu_id
+
 import copy
 import time
 from tqdm import tqdm
@@ -15,13 +19,11 @@ from torch import nn
 from torch.nn import CTCLoss
 import utils
 from crnn_mx import CRNN
-import config
 import shutil
 from dataset import ImageDataset
 from tensorboardX import SummaryWriter
 
 torch.backends.cudnn.benchmark = True
-os.environ["CUDA_VISIBLE_DEVICES"] = str(config.gpu_id)
 if config.img_type == 'cv':
     from opencv_transforms import opencv_transforms as transforms
 else:
@@ -153,7 +155,11 @@ def train():
     criterion = CTCLoss()
 
     model = CRNN(config.img_channel, len(config.alphabet), config.nh)
-    model.apply(weights_init)
+    if not config.restart_training:
+        model.apply(weights_init)
+    num_gpus = torch.cuda.device_count()
+    if num_gpus > 1:
+        model = nn.DataParallel(model)
     optimizer = optim.Adam(model.parameters(), lr=config.lr)
 
 
@@ -190,7 +196,7 @@ def train():
                 images = images.to(device)
 
                 preds = model(images)
-                preds = preds.log_softmax(2) # for torch 1.0
+                preds = preds.log_softmax(2).to(torch.float64) # for torch 1.0
                 preds_lengths = torch.Tensor([preds.size(0)] * cur_batch_size).int()
                 loss = criterion(preds, targets, preds_lengths, targets_lengths)  # text,preds_size must be cpu
                 # backward

@@ -5,6 +5,7 @@
 import os
 import cv2
 import torch
+import numpy as np
 from torchvision import transforms
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
@@ -65,8 +66,8 @@ class Pytorch_model:
         elif len(img.shape) == 3 and self.img_channel == 1:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
+        img = self.pre_processing(img)
         # 将图片由(w,h)变为(1,img_channel,h,w)
-        img = img.reshape([self.img_h, self.img_w, self.img_channel])
         img = transforms.ToTensor()(img)
         img = img.unsqueeze_(0)
 
@@ -82,6 +83,24 @@ class Pytorch_model:
         print('%-20s => %-20s' % (raw_pred, sim_pred))
         return sim_pred
 
+    def pre_processing(self, img):
+        """
+        对图片进行处理，先按照高度进行resize，resize之后如果宽度不足指定宽度，就补黑色像素，否则就强行缩放到指定宽度
+        :param img_path: 图片
+        :return:
+        """
+        img_h = self.img_h
+        img_w = self.img_w
+        h, w = img.shape[:2]
+        ratio_h = float(img_h) / h
+        new_w = int(w * ratio_h)
+        img = cv2.resize(img, (new_w, img_h))
+        if new_w < img_w:
+            step = np.zeros((img_h, img_w - new_w, self.img_channel), dtype=img.dtype)
+            img = np.column_stack((img, step))
+        else:
+            img = cv2.resize(img, (img_w, img_h))
+        return img
 
 def decode(preds, alphabet, raw=False):
     results = []

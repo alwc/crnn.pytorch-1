@@ -206,24 +206,52 @@ class Decoder(nn.Module):
         self.fc = nn.Linear(hidden_size * 2, n_class)
 
     def forward(self, x):
+        # remove the dim which is 1
+        x = x.squeeze(dim=2)
+        # from (batch,chanal,w) to (w,batch,channel)
+        x = x.permute(2, 0, 1)  # [w, b, c]
         x = self.rnn(x)
-        # print(x.shape)
+        print(x.shape)
         x = self.fc(x)
         # print(x.shape)
         return x
 
+class CNNDecoder(nn.Module):
+    def __init__(self, in_channels, n_class):
+        super(CNNDecoder, self).__init__()
+        self.cnn_decoder = nn.Sequential(
+            nn.Conv2d(in_channels=in_channels, out_channels=256, kernel_size=3, padding=1, stride=(2,1),bias=False),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1, stride=(2, 1), bias=False),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1, stride=(2, 1), bias=False),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1, stride=(2, 1), bias=False),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+        )
+        self.fc = nn.Linear(256, n_class)
+
+    def forward(self, x):
+        x = self.cnn_decoder(x)
+        x = x.squeeze(dim=2)
+        x = x.permute(2, 0, 1)
+        x = self.fc(x)
+        # print(x.shape)
+        return x
 
 class CRNN(nn.Module):
     def __init__(self, in_channels, n_class, hidden_size=256, num_layers=1):
         super(CRNN, self).__init__()
         self.encoder = Encoder(in_channels)
-        self.decoder = Decoder(2048, n_class, hidden_size, num_layers)
+        # self.decoder = Decoder(2048, n_class, hidden_size, num_layers)
+        self.decoder = CNNDecoder(2048, n_class)
 
     def forward(self, x):
         x = self.encoder(x)
-        # print(x.shape)
-        x = x.squeeze(dim=2)
-        x = x.permute(2, 0, 1)  # [w, b, c]
         x = self.decoder(x)
         return x
 
@@ -231,7 +259,7 @@ class CRNN(nn.Module):
 if __name__ == '__main__':
     device = torch.device('cpu')
     a = torch.zeros((2, 3, 32, 320)).to(device)
-    net = CRNN(3, 10, 256)
+    net = CRNN(3,32,256)
     net.eval()
     net.to(device)
     b = net(a)
